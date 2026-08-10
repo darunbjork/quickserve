@@ -1,0 +1,169 @@
+version: "3.8"
+
+services:
+  auth-db:
+    image: postgres:15-alpine
+    container_name: quickserve-auth-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: auth_db
+    ports:
+      - "15432:5432"
+    volumes:
+      - auth_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d auth_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  menu-db:
+    image: postgres:15-alpine
+    container_name: quickserve-menu-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: menu_db
+    ports:
+      - "15433:5432"
+    volumes:
+      - menu_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d menu_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  order-db:
+    image: postgres:15-alpine
+    container_name: quickserve-order-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: order_db
+    ports:
+      - "5434:5432"
+    volumes:
+      - order_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d order_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  kitchen-db:
+    image: postgres:15-alpine
+    container_name: quickserve-kitchen-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: kitchen_db
+    ports:
+      - "5435:5432"
+    volumes:
+      - kitchen_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d kitchen_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  loyalty-db:
+    image: postgres:15-alpine
+    container_name: quickserve-loyalty-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: loyalty_db
+    ports:
+      - "5436:5432"
+    volumes:
+      - loyalty_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d loyalty_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  payment-db:
+    image: postgres:15-alpine
+    container_name: quickserve-payment-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: payment_db
+    ports:
+      - "5437:5432"
+    volumes:
+      - payment_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d payment_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  notification-db:
+    image: postgres:15-alpine
+    container_name: quickserve-notification-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: notification_db
+    ports:
+      - "5438:5432"
+    volumes:
+      - notification_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d notification_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: quickserve-redis
+    ports:
+      - "16379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: quickserve-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: quickserve-mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    volumes:
+      - mailpit_data:/data
+
+volumes:
+  auth_data:
+  menu_data:
+  order_data:
+  kitchen_data:
+  loyalty_data:
+  payment_data:
+  notification_data:
+  redis_data:
+  rabbitmq_data:
+  mailpit_data:
