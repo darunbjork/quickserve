@@ -1,6 +1,7 @@
 {
   "name": "auth-service",
   "version": "1.0.0",
+  "type": "module",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc && prisma generate",
@@ -12,15 +13,16 @@
     "@prisma/client": "^7.9.1",
     "@quickserve/shared-types": "*",
     "@quickserve/shared-utils": "*",
-    "argon2": "^0.31.2",
+    "argon2": "^0.45.1",
     "express": "^4.18.2",
+    "jose": "^5.10.0",
     "oidc-provider": "^8.4.3",
     "pino-http": "^8.6.1",
     "zod": "^3.22.4"
   },
   "devDependencies": {
     "@prisma/config": "^7.9.1",
-    "@types/express": "^4.17.21",
+    "@types/express": "^4.17.25",
     "@types/node": "^20.11.0",
     "@types/oidc-provider": "^9.11.1",
     "prisma": "^7.9.1",

@@ -1,46 +1,26 @@
-import { prisma } from '../db/prisma';
+import { prisma } from '../db/prisma.js';
 import { Prisma } from '@prisma/client';
+import { Adapter, AdapterPayload } from 'oidc-provider';
 
-interface AdapterPayload {
-  grantId?: string | null;
-  userCode?: string | null;
-  uid?: string | null;
-  consumed?: number;
-  [key: string]: unknown;
-}
-
-interface Adapter {
-  upsert(id: string, payload: AdapterPayload, expiresIn?: number): Promise<void>;
-  find(id: string): Promise<AdapterPayload | undefined>;
-  findByUserCode(userCode: string): Promise<AdapterPayload | undefined>;
-  findByUid(uid: string): Promise<AdapterPayload | undefined>;
-  destroy(id: string): Promise<void>;
-  revokeByGrantId(grantId: string): Promise<void>;
-  consume(id: string): Promise<void>;
-}
-
-// WHY: Custom storage adapter satisfying node-oidc-provider's Adapter interface.
-// This routes all session state, authorization codes, and refresh tokens into auth_db.
 export class PrismaOidcAdapter implements Adapter {
   private name: string;
 
   constructor(name: string) {
-    this.name = name; // Model name passed by oidc-provider (e.g. "Grant", "AccessToken", "Session")
+    this.name = name; 
   }
 
   public async upsert(id: string, payload: AdapterPayload, expiresIn?: number): Promise<void> {
     const expiresAt = expiresIn ? new Date(Date.now() + expiresIn * 1000) : undefined;
 
-    // Convert AdapterPayload to Prisma Json-compatible value
     const jsonPayload = payload as unknown as Prisma.InputJsonValue;
 
     await prisma.oidcModel.upsert({
       where: { id },
       update: {
         payload: jsonPayload,
-        grantId: payload.grantId,
-        userCode: payload.userCode,
-        uid: payload.uid,
+        grantId: payload.grantId ?? undefined,
+        userCode: payload.userCode ?? undefined,
+        uid: payload.uid ?? undefined,
         expiresAt,
         consumedAt: payload.consumed ? new Date(payload.consumed * 1000) : undefined,
       },
@@ -48,9 +28,9 @@ export class PrismaOidcAdapter implements Adapter {
         id,
         type: this.name,
         payload: jsonPayload,
-        grantId: payload.grantId,
-        userCode: payload.userCode,
-        uid: payload.uid,
+        grantId: payload.grantId ?? undefined,
+        userCode: payload.userCode ?? undefined,
+        uid: payload.uid ?? undefined,
         expiresAt,
         consumedAt: payload.consumed ? new Date(payload.consumed * 1000) : undefined,
       },
