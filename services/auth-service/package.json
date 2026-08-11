@@ -5,11 +5,13 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc && prisma generate",
+    "start": "node dist/index.js",
     "dev": "tsc --watch",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev"
   },
   "dependencies": {
+    "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.9.1",
     "@quickserve/shared-types": "*",
     "@quickserve/shared-utils": "*",

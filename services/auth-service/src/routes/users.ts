@@ -6,7 +6,6 @@ import { ApiResponse } from '@quickserve/shared-types';
 const userService = new UserService();
 export const userRouter = Router();
 
-// REST route for direct account creation
 userRouter.post(
   '/register',
   asyncHandler(async (req: Request, res: Response) => {

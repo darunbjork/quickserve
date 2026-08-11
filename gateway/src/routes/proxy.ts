@@ -1,15 +1,16 @@
 import { Router } from 'express';
 import { createProxyMiddleware } from 'http-proxy-middleware';
+import { config } from '../config';
 
 export const proxyRouter = Router();
 
 const services = {
-  '/api/auth': 'http://auth-service:3001',
-  '/api/menu': 'http://menu-service:3002',
-  '/api/orders': 'http://order-service:3003',
-  '/api/kitchen': 'http://kitchen-service:3004',
-  '/api/loyalty': 'http://loyalty-service:3005',
-  '/api/payment': 'http://payment-service:3006',
+  '/api/auth': config.AUTH_SERVICE_URL,
+  '/api/menu': config.MENU_SERVICE_URL,
+  '/api/orders': config.ORDER_SERVICE_URL,
+  '/api/kitchen': config.KITCHEN_SERVICE_URL,
+  '/api/loyalty': config.LOYALTY_SERVICE_URL,
+  '/api/payment': config.PAYMENT_SERVICE_URL,
 };
 
 Object.entries(services).forEach(([path, target]) => {

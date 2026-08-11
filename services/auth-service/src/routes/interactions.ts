@@ -8,7 +8,6 @@ const userService = new UserService();
 export const createInteractionRouter = (provider: Provider): Router => {
   const router = Router();
 
-  // GET /oauth/interaction/:uid — Render or retrieve current interaction state
   router.get(
     '/:uid',
     asyncHandler(async (req: Request, res: Response) => {
@@ -24,7 +23,6 @@ export const createInteractionRouter = (provider: Provider): Router => {
     })
   );
 
-  // POST /oauth/interaction/:uid/login — Complete login step during authorization flow
   router.post(
     '/:uid/login',
     asyncHandler(async (req: Request, res: Response) => {
