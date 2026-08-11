@@ -1,0 +1,63 @@
+// WHY: auth-service owns its isolated database (auth_db) per ADR-001/004.
+// Other services cannot read or write directly to these tables.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  CUSTOMER
+  STAFF
+  ADMIN
+}
+
+// WHY: User identity store with explicit RBAC role assignment.
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  role         UserRole @default(CUSTOMER)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("users")
+}
+
+// WHY: First-party registered OAuth clients (web app, mobile app, KDS kiosk).
+model OAuthClient {
+  id            String   @id
+  secret        String? // Null for public clients (SPA/Mobile) enforcing PKCE
+  redirectUris  String[]
+  grantTypes    String[]
+  responseTypes String[]
+  clientName    String
+  createdAt     DateTime @default(now())
+
+  @@map("oauth_clients")
+}
+
+// WHY: Unified OIDC payload storage for node-oidc-provider.
+// Rather than creating 10 individual tables for AuthorizationCode, AccessToken, Grant,
+// Session, RefreshToken, etc., we store the serialized AdapterPayload with indexed key fields.
+model OidcModel {
+  id         String    @id
+  type       String // Corresponds to the OIDC entity type (e.g. "Grant", "Session", "AccessToken")
+  payload    Json // Serialized node-oidc-provider AdapterPayload object
+  grantId    String?
+  userCode   String?
+  uid        String?   @unique
+  expiresAt  DateTime?
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([grantId])
+  @@index([userCode])
+  @@index([expiresAt])
+  @@map("oidc_models")
+}

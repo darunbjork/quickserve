@@ -156,10 +156,6 @@ services:
     volumes:
       - mailpit_data:/data
 
-  # ! Gateway Replica 1
-  # * WHY: We explicitly define two separate gateway containers rather than using Docker's internal
-  # * DNS scaling. This allows Nginx to perform intelligent, application-aware load balancing (least_conn)
-  # * rather than relying on Docker's dumb round-robin IP resolution.
   gateway-1:
     image: node:20-alpine
     container_name: quickserve-gateway-1
@@ -170,7 +166,6 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=3000
-      # Override the .env localhost with the internal Docker DNS name for Redis
       - REDIS_URL=redis://quickserve-redis:6379
       - ALLOWED_ORIGINS=http://localhost
     depends_on:
@@ -194,7 +189,6 @@ services:
       redis:
         condition: service_healthy
 
-  # Nginx Edge Proxy
   nginx:
     image: nginx:1.25-alpine
     container_name: quickserve-nginx
