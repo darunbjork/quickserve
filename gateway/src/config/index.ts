@@ -1,8 +1,6 @@
 import { z } from 'zod';
 import { validateEnv } from '@quickserve/shared-utils';
 
-// * WHY: The gateway requires strict configuration. We define ALLOWED_ORIGINS as a comma-separated 
-// * string to prevent developers from easily doing a wildcard (*) CORS bypass in production.
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.string().default('3000'),

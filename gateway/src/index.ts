@@ -11,11 +11,8 @@ import { proxyRouter } from './routes/proxy';
 
 const app = express();
 
-// Security middleware
 app.use(helmet());
 
-// * WHY: Zero CORS wildcard in production. We parse the comma-separated allowed origins list.
-// * If an attacker hosts a malicious site, their XHR requests will be blocked by the browser.
 const allowedOrigins = config.ALLOWED_ORIGINS.split(',');
 app.use(cors({
   origin: (origin, callback) => {
@@ -36,18 +33,14 @@ app.use(globalRateLimiter);
 app.get('/health/live', (req, res) => res.status(200).send('OK'));
 app.get('/health/ready', (req, res) => res.status(200).send('OK'));
 
-// Proxy routing to microservices
 app.use('/', proxyRouter);
 
-// Global Error Handler (must be registered last)
 app.use(errorHandler);
 
 const server = app.listen(config.PORT, () => {
   logger.info(`Gateway running on port ${config.PORT}`);
 });
 
-// * WHY: Graceful shutdown. If we receive a SIGTERM from Docker/Kubernetes, we stop accepting 
-// * new connections but allow in-flight requests (e.g., a proxy to order-service) to finish.
 const shutdown = () => {
   logger.info('SIGTERM signal received: closing HTTP server');
   server.close(() => {

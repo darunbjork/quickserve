@@ -156,6 +156,57 @@ services:
     volumes:
       - mailpit_data:/data
 
+  # ! Gateway Replica 1
+  # * WHY: We explicitly define two separate gateway containers rather than using Docker's internal
+  # * DNS scaling. This allows Nginx to perform intelligent, application-aware load balancing (least_conn)
+  # * rather than relying on Docker's dumb round-robin IP resolution.
+  gateway-1:
+    image: node:20-alpine
+    container_name: quickserve-gateway-1
+    working_dir: /usr/src/app
+    volumes:
+      - .:/usr/src/app
+    command: sh -c "npm install --no-audit --progress=false && npm run build --workspace=gateway && npm run start --workspace=gateway"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      # Override the .env localhost with the internal Docker DNS name for Redis
+      - REDIS_URL=redis://quickserve-redis:6379
+      - ALLOWED_ORIGINS=http://localhost
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # ! Gateway Replica 2
+  gateway-2:
+    image: node:20-alpine
+    container_name: quickserve-gateway-2
+    working_dir: /usr/src/app
+    volumes:
+      - .:/usr/src/app
+    command: sh -c "npm install --no-audit --progress=false && npm run build --workspace=gateway && npm run start --workspace=gateway"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - REDIS_URL=redis://quickserve-redis:6379
+      - ALLOWED_ORIGINS=http://localhost
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # Nginx Edge Proxy
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: quickserve-nginx
+    ports:
+      - "80:80" # ! The single public entry point to the entire system
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+    depends_on:
+      - gateway-1
+      - gateway-2
+
 volumes:
   auth_data:
   menu_data:

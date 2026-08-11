@@ -2,8 +2,6 @@ import { Request, Response, NextFunction } from 'express';
 import { AppError, logger } from '@quickserve/shared-utils';
 import { ApiResponse, ErrorCode } from '@quickserve/shared-types';
 
-// * WHY: Centralized error handling guarantees every API failure conforms to our standard `ApiResponse<T>` envelope.
-// Without this, uncaught exceptions would return raw Express HTML stack traces, breaking JSON-expecting clients.
 export const errorHandler = (
   err: Error,
   req: Request,
