@@ -202,6 +202,22 @@ services:
     volumes:
       - mailpit_data:/data
 
+  # KDS Service (WebSocket + RabbitMQ consumer)
+  kds-service:
+    image: node:20-alpine
+    container_name: quickserve-kds
+    working_dir: /usr/src/app
+    volumes:
+      - .:/usr/src/app
+    command: sh -c "npm install --no-audit --progress=false && npm run build --workspace=kds-service && npm run start --workspace=kds-service"
+    environment:
+      - NODE_ENV=development
+      - PORT=3004
+      - RABBITMQ_URL=amqp://quickserve-rabbitmq:5672
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
   # ! Gateway Replica 1
   gateway-1:
     image: node:20-alpine
@@ -265,6 +281,7 @@ services:
     depends_on:
       - gateway-1
       - gateway-2
+      - kds-service
 
 volumes:
   auth_data:
