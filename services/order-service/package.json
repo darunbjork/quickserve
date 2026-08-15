@@ -1,0 +1,32 @@
+{
+  "name": "order-service",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc && prisma generate",
+    "dev": "tsc --watch",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev"
+  },
+  "dependencies": {
+    "@prisma/client": "^7.9.1",
+    "@quickserve/shared-types": "*",
+    "@quickserve/shared-utils": "*",
+    "amqplib": "^0.10.3",
+    "express": "^4.18.2",
+    "pino-http": "^8.6.1",
+    "zod": "^3.22.4"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@types/amqplib": "^0.10.8",
+    "@types/express": "^4.17.25",
+    "@types/node": "^26.2.0",
+    "prisma": "^7.9.1",
+    "typescript": "^5.9.3"
+  }
+}
