@@ -4,8 +4,40 @@ import { config } from '../config';
 
 export const proxyRouter = Router();
 
+proxyRouter.use(
+  '/api/auth',
+  createProxyMiddleware({
+    target: config.AUTH_SERVICE_URL,
+    changeOrigin: true,
+    pathRewrite: { '^/api/auth': '/oauth' },
+    logLevel: 'debug',
+    onProxyReq: (proxyReq, req: any) => {
+      if (req.correlationId) {
+        proxyReq.setHeader('x-correlation-id', req.correlationId);
+      }
+      if (req.user) {
+        proxyReq.setHeader('x-user-id', req.user.sub);
+        proxyReq.setHeader('x-user-role', req.user.role);
+      }
+    },
+  })
+);
+
+proxyRouter.use(
+  '/api/users',
+  createProxyMiddleware({
+    target: config.AUTH_SERVICE_URL, 
+    changeOrigin: true,
+    logLevel: 'debug',
+    onProxyReq: (proxyReq, req: any) => {
+      if (req.correlationId) {
+        proxyReq.setHeader('x-correlation-id', req.correlationId);
+      }
+    },
+  })
+);
+
 const services = {
-  '/api/auth': config.AUTH_SERVICE_URL,
   '/api/menu': config.MENU_SERVICE_URL,
   '/api/orders': config.ORDER_SERVICE_URL,
   '/api/kitchen': config.KITCHEN_SERVICE_URL,
@@ -19,14 +51,11 @@ Object.entries(services).forEach(([path, target]) => {
     createProxyMiddleware({
       target,
       changeOrigin: true,
-      pathRewrite: {
-        [`^${path}`]: '', 
-      },
+      pathRewrite: { [`^${path}`]: '' },
       onProxyReq: (proxyReq, req: any) => {
         if (req.correlationId) {
           proxyReq.setHeader('x-correlation-id', req.correlationId);
         }
-       
         if (req.user) {
           proxyReq.setHeader('x-user-id', req.user.sub);
           proxyReq.setHeader('x-user-role', req.user.role);

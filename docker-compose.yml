@@ -1,3 +1,7 @@
+networks:
+  default:
+    name: quickserve-net
+
 services:
   auth-db:
     image: postgres:15-alpine
@@ -36,7 +40,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "wget --spider --quiet http://localhost:3001/health/ready || exit 1",
+          "node -e \"fetch('http://localhost:3001/health/ready').then(r => r.ok ? process.exit(0) : process.exit(1))\" || exit 1",
         ]
       interval: 5s
       timeout: 5s
@@ -193,7 +197,9 @@ services:
       - PORT=3000
       - REDIS_URL=redis://quickserve-redis:6379
       - ALLOWED_ORIGINS=http://localhost
-      - AUTH_SERVICE_URL=http://auth-service:3001/oauth
+      - JWKS_URI=http://auth-service:3001/oauth/jwks
+      - JWT_ISSUER=http://localhost:3001/oauth
+      - AUTH_SERVICE_URL=http://auth-service:3001
       - MENU_SERVICE_URL=http://menu-service:3002
       - ORDER_SERVICE_URL=http://order-service:3003
       - KITCHEN_SERVICE_URL=http://kitchen-service:3004
@@ -217,7 +223,9 @@ services:
       - PORT=3000
       - REDIS_URL=redis://quickserve-redis:6379
       - ALLOWED_ORIGINS=http://localhost
-      - AUTH_SERVICE_URL=http://auth-service:3001/oauth
+      - JWKS_URI=http://auth-service:3001/oauth/jwks
+      - JWT_ISSUER=http://localhost:3001/oauth
+      - AUTH_SERVICE_URL=http://auth-service:3001
       - MENU_SERVICE_URL=http://menu-service:3002
       - ORDER_SERVICE_URL=http://order-service:3003
       - KITCHEN_SERVICE_URL=http://kitchen-service:3004

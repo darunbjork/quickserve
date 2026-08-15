@@ -30,11 +30,14 @@ export const createOidcProvider = (): Provider => {
     adapter: PrismaOidcAdapter,
     clients: registeredClients,
     pkce: {
-      required: () => true,
+      required: (_ctx, client) => {
+        return client.grantTypes?.includes('authorization_code') ?? false;
+      },
     },
     features: {
       devInteractions: { enabled: false },
       revocation: { enabled: true },
+      clientCredentials: { enabled: true },
     },
     interactions: {
       url(_ctx, interaction) {

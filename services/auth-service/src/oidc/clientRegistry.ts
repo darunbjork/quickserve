@@ -4,7 +4,7 @@ export const registeredClients: ClientMetadata[] = [
   {
     client_id: 'quickserve-web',
     client_name: 'QuickServe Web Client',
-    token_endpoint_auth_method: 'none', 
+    token_endpoint_auth_method: 'none',
     grant_types: ['authorization_code', 'refresh_token'],
     response_types: ['code'],
     redirect_uris: ['http://localhost:3000/callback', 'http://localhost/api/auth/callback'],
@@ -12,7 +12,7 @@ export const registeredClients: ClientMetadata[] = [
   {
     client_id: 'quickserve-mobile',
     client_name: 'QuickServe Mobile App',
-    token_endpoint_auth_method: 'none', 
+    token_endpoint_auth_method: 'none',
     grant_types: ['authorization_code', 'refresh_token'],
     response_types: ['code'],
     redirect_uris: ['quickserve://oauth/callback'],
@@ -25,5 +25,14 @@ export const registeredClients: ClientMetadata[] = [
     grant_types: ['authorization_code', 'refresh_token'],
     response_types: ['code'],
     redirect_uris: ['http://localhost:3004/kds/callback'],
+  },
+  {
+    client_id: 'test-client',
+    client_name: 'Test Client',
+    client_secret: 'test-secret',
+    token_endpoint_auth_method: 'client_secret_basic',
+    grant_types: ['client_credentials'],
+    response_types: [],
+    redirect_uris: [],
   },
 ];
