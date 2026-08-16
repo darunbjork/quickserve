@@ -1,0 +1,87 @@
+name: QuickServe CI/CD Pipeline
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static-analysis:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Install Monorepo Dependencies
+        run: npm ci
+
+      - name: Type Check & Build Shared Packages
+        run: npm run build --workspaces --if-present
+
+  docker-build:
+    name: Container Build Verification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Validate Container Builds
+        run: docker compose build --parallel
+
+  e2e-integration:
+    name: System E2E Integration Tests
+    needs: [static-analysis, docker-build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Start Full Microservices Environment
+        run: docker compose up -d --build
+
+      - name: Wait for Infrastructure Services Health
+        run: |
+          echo "Awaiting RabbitMQ and PostgreSQL health checks..."
+          timeout 60s bash -c '
+            until docker compose exec -T rabbitmq rabbitmq-diagnostics -q ping 2>/dev/null && \
+                  docker compose exec -T auth-db pg_isready -U postgres -d auth_db 2>/dev/null && \
+                  docker compose exec -T order-db pg_isready -U postgres -d order_db 2>/dev/null; do
+              sleep 2
+            done
+          '
+          echo "All infrastructure dependencies are ready."
+
+      - name: Execute E2E Integration Test
+        run: npx ts-node scripts/e2e-test.ts
+
+      - name: Capture Container Logs on Failure
+        if: failure()
+        run: docker compose logs --tail=200
+
+      - name: Tear Down Stack
+        if: always()
+        run: docker compose down -v

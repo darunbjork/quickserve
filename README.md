@@ -1,77 +1,275 @@
+```markdown
 # Quickserve — Local Development
 
-This README documents how to run the services locally, verify the gateway proxying, and common troubleshooting steps.
+This README documents how to run the entire microservices platform locally, verify the system end‑to‑end, and troubleshoot common issues encountered during setup.
 
-Prerequisites
+---
+
+## Prerequisites
+
 - Docker & Docker Compose (v2) installed
-- Node.js + npm (used for local installs and builds)
+- Node.js 20+ and npm (for local builds and the E2E test)
+- PostgreSQL client tools (optional, for manual DB inspection)
 
-Quick start (dev)
-1. From the repository root run:
+---
 
-```bash
-# build and start core services used during development
-docker compose up -d --build auth-service gateway-1 gateway-2 nginx
-```
+## Quick Start (Full Stack)
 
-2. Recreate gateways (if you change envs or proxy config):
+1. **Clone the repository** and navigate to the root:
 
 ```bash
-docker compose up -d --force-recreate gateway-1 gateway-2
+cd quickserve
 ```
 
-Verify proxy and OIDC discovery
-- Direct auth-service (container mapped port):
+2. **Install dependencies** (monorepo root):
 
 ```bash
-curl http://localhost:3001/oauth/.well-known/openid-configuration
+npm install
 ```
 
-- Through gateway + nginx (public):
+3. **Build and start all services** (this builds the `auth-service` image and starts all containers):
 
 ```bash
-curl http://localhost/api/auth/.well-known/openid-configuration
+docker compose up -d --build
 ```
 
-If you receive `Cannot GET /.well-known/openid-configuration` then the gateway target needs to include the `/oauth` suffix. The repository already sets `AUTH_SERVICE_URL` to `http://auth-service:3001/oauth` in `docker-compose.yml` and the gateway reads `AUTH_SERVICE_URL` from environment to construct proxy targets.
+Wait for all containers to become healthy (you can monitor with `docker compose ps`).
 
-Gateway troubleshooting
-- Check gateway logs:
+4. **Run database migrations** for each service that uses a database:
 
 ```bash
-docker compose logs gateway-1 --tail 80
+# Auth service
+docker compose exec auth-service sh -c "cd services/auth-service && npx prisma migrate dev --name init"
+
+# Order service
+docker compose exec order-service sh -c "cd services/order-service && npx prisma migrate dev --name init"
 ```
 
-- Test reachability from inside a gateway container (curl may not be installed):
+5. **Seed the test OAuth client** (required for the E2E test and client_credentials grant):
 
 ```bash
-# uses node - available in node image; prints status and body
-docker compose exec gateway-1 sh -c 'node -e "require(\"http\").get(\"http://auth-service:3001/oauth/.well-known/openid-configuration\", r => { console.log(r.statusCode); let s=\"\"; r.on(\"data\", d=> s+=d); r.on(\"end\", ()=> console.log(s)); });"'
+docker compose exec auth-db psql -U postgres -d auth_db -c "
+INSERT INTO oidc_models (id, type, payload, \"createdAt\", \"updatedAt\")
+VALUES (
+  'test-client',
+  'Client',
+  '{\"client_id\":\"test-client\",\"client_secret\":\"test-secret\",\"grant_types\":[\"client_credentials\"],\"response_types\":[],\"redirect_uris\":[],\"token_endpoint_auth_method\":\"client_secret_basic\"}',
+  NOW(),
+  NOW()
+)
+ON CONFLICT (id) DO NOTHING;
+"
 ```
 
-Healthcheck notes
-- The `auth-service` healthcheck in this repo used `wget` originally which is not installed in the `node:20-slim` / `node:20-alpine` images. This is expected and can be changed to a Node one-liner or removed for local development:
+6. **Run the end‑to‑end integration test** to verify the full asynchronous flow:
+
+```bash
+npx ts-node scripts/e2e-test.ts
+```
+
+**Expected output**:
+
+```
+🚀 Starting QuickServe Microservices E2E Integration Test...
+
+1️⃣ Obtaining access token via client_credentials...
+   ✅ Access token obtained successfully.
+
+2️⃣ Establishing WebSocket connection to KDS Service...
+   ✅ Connected to KDS WebSocket stream.
+
+3️⃣ Submitting new order to Order Service...
+   ✅ Order created with ID: ... (Total: 225 SEK)
+
+4️⃣ Awaiting WebSocket event propagation from RabbitMQ to KDS...
+   📥 KDS Received Event: order.created
+   ✅ Order ID matches: ...
+
+🎉 E2E INTEGRATION TEST PASSED SUCCESSFULLY!
+```
+
+If the test passes, your system is fully functional.
+
+---
+
+## Service Endpoints
+
+| Service              | Internal URL                       | Public URL (via Nginx)            |
+|----------------------|------------------------------------|-----------------------------------|
+| Auth Service (OIDC)  | `http://auth-service:3001/oauth`   | `http://localhost/api/auth`      |
+| Order Service        | `http://order-service:3003`        | `http://localhost/api/orders`    |
+| KDS WebSocket        | `ws://kds-service:3004/ws/kds`     | `ws://localhost/ws/kds`          |
+| Nginx (public edge)  | N/A                                | `http://localhost`               |
+
+- **OIDC discovery**: `http://localhost/api/auth/.well-known/openid-configuration`
+- **JWKS endpoint**: `http://localhost/api/auth/jwks` (or `http://localhost:3001/oauth/jwks` directly)
+
+---
+
+## Troubleshooting Common Issues
+
+### 1. Order‑service fails to start with `Cannot find module '/usr/src/app/services/order-service/dist/index.js'`
+
+**Cause:** The compiled output is in `dist/src/index.js` (because `tsconfig.json` sets `rootDir: "./src"`).  
+**Fix:** In `services/order-service/package.json`, change the `start` script from `"node dist/index.js"` to `"node dist/src/index.js"`. Then restart the service.
+
+```bash
+docker compose restart order-service
+```
+
+---
+
+### 2. TypeScript errors in order‑service: `Module '@prisma/client' has no exported member 'OrderStatus'`
+
+**Cause:** The build script runs `tsc` before `prisma generate`.  
+**Fix:** In `services/order-service/package.json`, change the `build` script to:
+
+```json
+"build": "prisma generate && tsc"
+```
+
+Then restart the service.
+
+---
+
+### 3. Token endpoint returns `invalid_client_metadata` for `client_credentials`
+
+**Cause:** The `clientCredentials` feature is not enabled in `provider.ts`, or the client is not seeded.  
+**Fix:**
+- Enable `clientCredentials: { enabled: true }` in the `features` block of `services/auth-service/src/oidc/provider.ts`.
+- Rebuild and restart `auth-service`:
+
+```bash
+docker compose build auth-service
+docker compose up -d auth-service
+```
+
+- Seed the `test-client` into the `oidc_models` table (as shown in step 5 above).
+
+---
+
+### 4. E2E test fails with 504 Gateway Timeout on order creation
+
+**Cause:** The gateway cannot reach `order-service` (service not running or misconfigured).  
+**Fix:** Verify that `order-service` is running and healthy:
+
+```bash
+docker compose ps order-service
+docker compose logs order-service --tail 20
+```
+
+If the `start` script path is wrong, fix it as described in issue #1.  
+Also ensure the gateway’s `ORDER_SERVICE_URL` environment variable points to `http://order-service:3003` (default).
+
+---
+
+### 5. WebSocket connection to KDS returns 404
+
+**Cause:** Nginx not configured to proxy WebSocket upgrade requests.  
+**Fix:** Ensure `nginx/conf.d/quickserve.conf` contains the following location block:
+
+```nginx
+location /ws/kds {
+    proxy_pass http://quickserve-kds:3004;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "Upgrade";
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_read_timeout 86400s;
+}
+```
+
+Then restart Nginx:
+
+```bash
+docker compose restart nginx
+```
+
+---
+
+### 6. Prisma migrations fail with `The datasource.url property is required`
+
+**Cause:** Prisma 7 expects the connection URL to be provided via a `prisma.config.ts` file, not in the schema.  
+**Fix:** Ensure each service has a valid `prisma.config.ts` that exports the `url` from `process.env`, and that the environment variable is correctly set in `docker-compose.yml`.
+
+---
+
+### 7. Healthchecks for auth‑service fail because `wget` is not installed
+
+**Solution:** Replace the healthcheck in `docker-compose.yml` with a Node.js one‑liner:
 
 ```yaml
-healthcheck:
-  test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3001/health/ready', r=>{process.exit(r.statusCode===200?0:1)})\""]
+test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3001/health/ready').then(r => r.ok ? process.exit(0) : process.exit(1))\""]
 ```
 
-TypeScript / tooling
-- To build the monorepo:
+---
+
+### 8. Gateway JWT verification fails with `invalid signature`
+
+**Cause:** The JWKS endpoint is not reachable or the issuer (`iss`) claim doesn't match `JWT_ISSUER`.  
+**Fix:**
+- Ensure `JWKS_URI` in `gateway` environment points to `http://auth-service:3001/oauth/jwks`.
+- Ensure `JWT_ISSUER` matches the issuer in the token (which is `http://localhost:3001/oauth` in development).
+
+---
+
+## Development Workflow
+
+- **Build the monorepo**:
 
 ```bash
 npm run build
 ```
 
-- `npm test` is configured to run `turbo run test`. If you use `turbo` in CI, ensure a `packageManager` field exists in root `package.json` (for example `npm@11`).
+- **Run a single service in watch mode** (e.g., `gateway`):
 
-Notes for maintainers
-- Gateway proxy paths are configured in `gateway/src/routes/proxy.ts` and read the env values validated by `gateway/src/config/index.ts`.
-- `AUTH_SERVICE_URL` in compose is set to `http://auth-service:3001/oauth` so that requests to `/api/auth` are correctly proxied to `auth-service`'s `/oauth` routes.
+```bash
+npm run dev --workspace=gateway
+```
 
-Next steps
-- Replace the gateway's JWT stub middleware with proper RS256 verification using the JWKS endpoint at `/oauth/jwks` (auth-service). If you want, I can implement the middleware using `jose` and `jwks-rsa`.
+- **Run the E2E test** (after starting the stack):
+
+```bash
+npx ts-node scripts/e2e-test.ts
+```
+
+- **View logs** of a specific container:
+
+```bash
+docker compose logs <service-name> --tail 50
+```
 
 ---
-Generated for developers working with this workspace.
+
+## Cleanup
+
+To stop all containers and remove volumes (including database data):
+
+```bash
+docker compose down -v
+```
+
+To also remove installed node_modules, run:
+
+```bash
+rm -rf node_modules packages/*/node_modules services/*/node_modules
+rm -rf package-lock.json packages/*/package-lock.json services/*/package-lock.json
+```
+
+Then reinstall with `npm install`.
+
+---
+
+## Contributing & Next Steps
+
+- **Production readiness**: Replace development JWKS with proper RSA keys, enable TLS, and set up monitoring.
+- **Missing services**: The platform currently includes `auth`, `order`, and `kds` services. Future steps can add `menu`, `kitchen`, `loyalty`, `payment`, and `notification` services.
+- **Outbox pattern**: For production, implement an outbox table to guarantee event delivery.
+
+For any questions or issues not covered here, refer to the logs and the architectural decision records in `ARCHITECTURE.md`.
+
+---
+
+**Generated for developers working with the QuickServe monorepo.**
