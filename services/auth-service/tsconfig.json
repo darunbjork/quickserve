@@ -3,7 +3,7 @@
     "target": "ES2022",
     "module": "Node16",
     "outDir": "./dist",
-    "rootDir": ".",
+    "rootDir": "./src",
     "strict": true,
     "esModuleInterop": true,
     "ignoreDeprecations": "5.0",
@@ -11,5 +11,5 @@
     "forceConsistentCasingInFileNames": true,
     "types": ["node", "oidc-provider"]
   },
-  "include": ["src/**/*", "prisma.config.ts", "prisma/**/*.ts"]
+  "include": ["src/**/*"]
 }

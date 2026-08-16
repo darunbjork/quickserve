@@ -11,6 +11,7 @@ app.get('/health/live', (_req, res) => res.status(200).send('OK'));
 app.get('/health/ready', (_req, res) => res.status(200).send('OK'));
 
 app.use('/api/orders', orderRouter);
+app.use('/', orderRouter);
 
 const start = async () => {
   await OrderEventPublisher.initialize();

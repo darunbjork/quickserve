@@ -21,7 +21,9 @@ RUN npm install --no-audit --progress=false
 # Copy the rest of the source code
 COPY . .
 
-# Build the auth-service
+# Build shared packages and auth-service
+RUN npm run build --workspace=@quickserve/shared-types
+RUN npm run build --workspace=@quickserve/shared-utils
 RUN npx prisma generate --schema=services/auth-service/prisma/schema.prisma
 RUN npm run build --workspace=auth-service
 

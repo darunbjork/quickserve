@@ -6,24 +6,24 @@ import { UserRepository } from '../repositories/user.repository.js';
 
 const userRepository = new UserRepository();
 
-const devJwks = {
-  keys: [
-    {
-      kty: 'RSA',
-      use: 'sig',
-      alg: 'RS256',
-      kid: 'quickserve-dev-key-1',
-      n: 'u1W16321528623714264718291625341',
-      e: 'AQAB',
-      d: 'd_dev_private_key_value',
-      p: 'p_dev_value',
-      q: 'q_dev_value',
-      dp: 'dp_dev_value',
-      dq: 'dq_dev_value',
-      qi: 'qi_dev_value',
-    },
-  ],
-};
+// const devJwks = {
+//   keys: [
+//     {
+//       kty: 'RSA',
+//       use: 'sig',
+//       alg: 'RS256',
+//       kid: 'quickserve-dev-key-1',
+//       n: 'u1W16321528623714264718291625341',
+//       e: 'AQAB',
+//       d: 'd_dev_private_key_value',
+//       p: 'p_dev_value',
+//       q: 'q_dev_value',
+//       dp: 'dp_dev_value',
+//       dq: 'dq_dev_value',
+//       qi: 'qi_dev_value',
+//     },
+//   ],
+// };
 
 export const createOidcProvider = (): Provider => {
   const oidcConfig: Configuration = {
@@ -38,6 +38,42 @@ export const createOidcProvider = (): Provider => {
       devInteractions: { enabled: false },
       revocation: { enabled: true },
       clientCredentials: { enabled: true },
+      resourceIndicators: {
+        enabled: true,
+        useGrantedResource: () => true,
+        defaultResource: () => 'http://localhost:3001/oauth',
+        getResourceServerInfo: async (_ctx, resourceIndicator) => {
+          return {
+            scope: 'openid profile email read write admin',
+            audience: resourceIndicator,
+            accessTokenTTL: 2 * 60 * 60,
+            accessTokenFormat: 'jwt',
+            jwt: {
+              sign: { alg: 'RS256' },
+            },
+          };
+        },
+      },
+    },
+    extraTokenClaims: async (_ctx, token) => {
+      if (token.kind === 'ClientCredentials') {
+        return {
+          email: 'test-client@quickserve.internal',
+          role: 'ADMIN',
+        };
+      }
+      return undefined;
+    },
+    formats: {
+      customizers: {
+        jwt: async (_ctx, token, jwt) => {
+          if (token.kind === 'ClientCredentials') {
+            jwt.payload.email = 'test-client@quickserve.internal';
+            jwt.payload.role = 'ADMIN';
+          }
+          return jwt;
+        },
+      },
     },
     interactions: {
       url(_ctx, interaction) {

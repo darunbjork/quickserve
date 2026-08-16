@@ -58,7 +58,7 @@ export const authenticateJwt = (req: Request, _res: Response, next: NextFunction
       }
 
       const payload = decoded as AuthenticatedPayload;
-
+      req.user = payload; 
       req.headers['x-user-id'] = payload.sub;
       req.headers['x-user-email'] = payload.email;
       req.headers['x-user-role'] = payload.role;
