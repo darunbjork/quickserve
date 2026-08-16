@@ -27,8 +27,8 @@ jobs:
       - name: Install Monorepo Dependencies
         run: npm ci
 
-      - name: Type Check & Build Shared Packages
-        run: npm run build --workspaces --if-present
+      - name: Build all workspaces (with dependency order)
+        run: npm run build
 
   docker-build:
     name: Container Build Verification
