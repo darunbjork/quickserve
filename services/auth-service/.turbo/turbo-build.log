@@ -1,0 +1,13 @@
+
+> auth-service@1.0.0 build
+> prisma generate && tsc
+
+[2mLoaded Prisma config from prisma.config.ts.
+[22m
+[2mPrisma schema loaded from prisma/schema.prisma.[22m
+
+✔ Generated [1mPrisma Client[22m (v7.9.1)[2m to ./../../node_modules/@prisma/client[22m in 67ms
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+

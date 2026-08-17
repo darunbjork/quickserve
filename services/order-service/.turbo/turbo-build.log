@@ -1,0 +1,80 @@
+
+> order-service@1.0.0 build
+> prisma generate && tsc
+
+[2mLoaded Prisma config from prisma.config.ts.
+[22m
+[2mPrisma schema loaded from prisma/schema.prisma.[22m
+
+✔ Generated [1mPrisma Client[22m (v7.9.1)[2m to ./../../node_modules/@prisma/client[22m in 68ms
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+
+[96msrc/domain/order.state-machine.ts[0m:[93m1[0m:[93m10[0m - [91merror[0m[90m TS2305: [0mModule '"@prisma/client"' has no exported member 'OrderStatus'.
+
+[7m1[0m import { OrderStatus } from '@prisma/client';
+[7m [0m [91m         ~~~~~~~~~~~[0m
+
+[96msrc/events/order.publisher.ts[0m:[93m4[0m:[93m10[0m - [91merror[0m[90m TS2305: [0mModule '"@prisma/client"' has no exported member 'OrderStatus'.
+
+[7m4[0m import { OrderStatus } from '@prisma/client';
+[7m [0m [91m         ~~~~~~~~~~~[0m
+
+[96msrc/repositories/order.repository.ts[0m:[93m2[0m:[93m10[0m - [91merror[0m[90m TS2305: [0mModule '"@prisma/client"' has no exported member 'OrderStatus'.
+
+[7m2[0m import { OrderStatus, PaymentStatus, Prisma } from '@prisma/client';
+[7m [0m [91m         ~~~~~~~~~~~[0m
+
+[96msrc/repositories/order.repository.ts[0m:[93m2[0m:[93m23[0m - [91merror[0m[90m TS2305: [0mModule '"@prisma/client"' has no exported member 'PaymentStatus'.
+
+[7m2[0m import { OrderStatus, PaymentStatus, Prisma } from '@prisma/client';
+[7m [0m [91m                      ~~~~~~~~~~~~~[0m
+
+[96msrc/repositories/order.repository.ts[0m:[93m19[0m:[93m30[0m - [91merror[0m[90m TS2339: [0mProperty 'order' does not exist on type 'Omit<PrismaClient<PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$use" | "$extends">'.
+
+[7m19[0m       const order = await tx.order.create({
+[7m  [0m [91m                             ~~~~~[0m
+
+[96msrc/repositories/order.repository.ts[0m:[93m45[0m:[93m19[0m - [91merror[0m[90m TS2339: [0mProperty 'order' does not exist on type 'PrismaClient<{ adapter: PrismaPg; log: ("query" | "warn" | "error")[]; }, "query" | "warn" | "error", DefaultArgs>'.
+
+[7m45[0m     return prisma.order.findUnique({
+[7m  [0m [91m                  ~~~~~[0m
+
+[96msrc/repositories/order.repository.ts[0m:[93m52[0m:[93m19[0m - [91merror[0m[90m TS2339: [0mProperty 'order' does not exist on type 'PrismaClient<{ adapter: PrismaPg; log: ("query" | "warn" | "error")[]; }, "query" | "warn" | "error", DefaultArgs>'.
+
+[7m52[0m     return prisma.order.findMany({
+[7m  [0m [91m                  ~~~~~[0m
+
+[96msrc/repositories/order.repository.ts[0m:[93m60[0m:[93m19[0m - [91merror[0m[90m TS2339: [0mProperty 'order' does not exist on type 'PrismaClient<{ adapter: PrismaPg; log: ("query" | "warn" | "error")[]; }, "query" | "warn" | "error", DefaultArgs>'.
+
+[7m60[0m     return prisma.order.update({
+[7m  [0m [91m                  ~~~~~[0m
+
+[96msrc/routes/order.routes.ts[0m:[93m4[0m:[93m10[0m - [91merror[0m[90m TS2305: [0mModule '"@prisma/client"' has no exported member 'OrderStatus'.
+
+[7m4[0m import { OrderStatus } from '@prisma/client';
+[7m [0m [91m         ~~~~~~~~~~~[0m
+
+[96msrc/services/order.service.ts[0m:[93m6[0m:[93m10[0m - [91merror[0m[90m TS2305: [0mModule '"@prisma/client"' has no exported member 'OrderStatus'.
+
+[7m6[0m import { OrderStatus } from '@prisma/client';
+[7m [0m [91m         ~~~~~~~~~~~[0m
+
+
+Found 10 errors in 5 files.
+
+Errors  Files
+     1  src/domain/order.state-machine.ts[90m:1[0m
+     1  src/events/order.publisher.ts[90m:4[0m
+     6  src/repositories/order.repository.ts[90m:2[0m
+     1  src/routes/order.routes.ts[90m:4[0m
+     1  src/services/order.service.ts[90m:6[0m
+⠙[1G[0K[1mnpm[22m [31merror[39m Lifecycle script `build` failed with error:
+⠙[1G[0K[1mnpm[22m [31merror[39m [94mcode[39m [33m2[39m
+⠙[1G[0K[1mnpm[22m [31merror[39m [94mpath[39m /Users/bjork/Documents/microservices/backend/quickserve/services/order-service
+⠙[1G[0K[1mnpm[22m [31merror[39m [94mworkspace[39m order-service@1.0.0
+⠙[1G[0K[1mnpm[22m [31merror[39m [94mlocation[39m /Users/bjork/Documents/microservices/backend/quickserve/services/order-service
+⠙[1G[0K[1mnpm[22m [31merror[39m command failed
+⠙[1G[0K[1mnpm[22m [31merror[39m [94mcommand[39m sh -c prisma generate && tsc
+⠙[1G[0K

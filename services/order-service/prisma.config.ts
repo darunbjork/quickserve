@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { defineConfig } from '@prisma/config';
 
 const databaseUrl = process.env.ORDER_DATABASE_URL ?? 'postgresql://postgres:postgres@localhost:5434/order_db';

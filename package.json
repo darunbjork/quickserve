@@ -15,6 +15,7 @@
     "test": "turbo run test"
   },
   "devDependencies": {
+    "@types/node": "^26.2.0",
     "turbo": "^2.10.9",
     "typescript": "^5.3.3"
   }
