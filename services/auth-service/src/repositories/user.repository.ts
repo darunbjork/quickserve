@@ -1,5 +1,5 @@
 import { prisma } from '../db/prisma.js';
-import { User, UserRole } from '@prisma/client';
+import { User, UserRole } from '../generated/prisma-client';
 
 export class UserRepository {
   public async findByEmail(email: string): Promise<User | null> {

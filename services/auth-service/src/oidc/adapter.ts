@@ -1,5 +1,5 @@
 import { prisma } from '../db/prisma.js';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../generated/prisma-client';
 import { Adapter, AdapterPayload } from 'oidc-provider';
 
 export class PrismaOidcAdapter implements Adapter {

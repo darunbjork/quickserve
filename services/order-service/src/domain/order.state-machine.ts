@@ -1,4 +1,4 @@
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus } from '../generated/prisma-client';
 import { AppError } from '@quickserve/shared-utils';
 import { ErrorCode } from '@quickserve/shared-types';
 

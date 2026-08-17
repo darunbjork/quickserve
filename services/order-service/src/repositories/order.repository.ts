@@ -1,5 +1,5 @@
 import { prisma } from '../db/prisma';
-import { OrderStatus, PaymentStatus, Prisma } from '@prisma/client';
+import { OrderStatus, PaymentStatus, Prisma } from '../generated/prisma-client';
 
 export interface CreateOrderItemInput {
   menuItemId: string;
