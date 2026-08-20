@@ -18,5 +18,16 @@
     "@types/node": "^26.2.0",
     "turbo": "^2.10.9",
     "typescript": "^5.3.3"
+  },
+  "overrides": {
+    "deepmerge-ts": "^8.0.1",
+    "@prisma/config": {
+      "deepmerge-ts": "^8.0.1"
+    },
+    "prisma": {
+      "@prisma/config": {
+        "deepmerge-ts": "^8.0.1"
+      }
+    }
   }
 }
