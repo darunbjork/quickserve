@@ -4,8 +4,8 @@
   "description": "",
   "main": "dist/index.js",
   "scripts": {
-    "build": "prisma generate && tsc",
-    "start": "node dist/src/index.js",
+    "build": "prisma generate && tsc && mkdir -p dist/generated && cp -r src/generated/prisma-client dist/generated/",
+    "start": "node dist/index.js",
     "dev": "tsc --watch",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev"

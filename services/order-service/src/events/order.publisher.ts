@@ -1,7 +1,7 @@
 import amqp from 'amqplib';
 import { config } from '../config';
 import { logger } from '@quickserve/shared-utils';
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus } from '../generated/prisma-client';
 
 export class OrderEventPublisher {
   // ! Use `any` to avoid TypeScript type mismatches with amqplib

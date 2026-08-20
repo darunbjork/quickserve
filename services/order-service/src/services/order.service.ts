@@ -3,7 +3,7 @@ import { OrderStateMachine } from '../domain/order.state-machine';
 import { OrderEventPublisher } from '../events/order.publisher';
 import { AppError } from '@quickserve/shared-utils';
 import { ErrorCode } from '@quickserve/shared-types';
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus } from '../generated/prisma-client';
 
 export class OrderService {
   private orderRepository: OrderRepository;

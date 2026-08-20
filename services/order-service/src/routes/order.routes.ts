@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { asyncHandler } from '@quickserve/shared-utils';
 import { OrderService } from '../services/order.service';
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus } from '../generated/prisma-client';
 
 const orderService = new OrderService();
 export const orderRouter = Router();
