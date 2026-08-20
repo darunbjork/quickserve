@@ -10,9 +10,14 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+  security-events: write # required for SARIF upload
+  actions: write # required for GHA cache backend
+
 jobs:
   static-analysis:
-    name: Lint & Type Check
+    name: Lint, Type Check & Dependency Audit
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -22,13 +27,70 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: "npm"
+          cache: npm
 
       - name: Install Monorepo Dependencies
         run: npm ci
 
-      - name: Build all workspaces (with dependency order)
+      - name: Audit Application Dependencies
+        run: npm audit --audit-level=high
+
+      - name: Build all workspaces
         run: npm run build
+
+  security-scan:
+    name: Trivy Filesystem & Image Scan (SARIF)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build auth-service with GHA cache
+        run: |
+          docker buildx build \
+            --file services/auth-service/Dockerfile \
+            --tag quickserve-auth-service:latest \
+            --cache-from type=gha,scope=auth-service \
+            --cache-to type=gha,mode=max,scope=auth-service \
+            --load \
+            .
+
+      - name: Trivy Filesystem Scan (SARIF)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: sarif
+          output: trivy-fs-results.sarif
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+
+      - name: Upload Filesystem SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-fs-results.sarif
+          category: trivy-fs
+
+      - name: Trivy Image Scan (SARIF)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: quickserve-auth-service:latest
+          format: sarif
+          output: trivy-image-results.sarif
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+
+      - name: Upload Image SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-image-results.sarif
+          category: trivy-image
 
   docker-build:
     name: Container Build Verification
@@ -40,12 +102,22 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Validate Container Builds
+      - name: Build auth-service with GHA cache
+        run: |
+          docker buildx build \
+            --file services/auth-service/Dockerfile \
+            --tag quickserve-auth-service:latest \
+            --cache-from type=gha,scope=auth-service \
+            --cache-to type=gha,mode=max,scope=auth-service \
+            --load \
+            .
+
+      - name: Build remaining services
         run: docker compose build --parallel
 
   e2e-integration:
     name: System E2E Integration Tests
-    needs: [static-analysis, docker-build]
+    needs: [static-analysis, security-scan, docker-build]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -55,32 +127,68 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: "npm"
+          cache: npm
 
       - name: Install Dependencies
         run: npm ci
 
-      - name: Start Full Microservices Environment
-        run: docker compose up -d --build
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Wait for Infrastructure Services Health
+      - name: Build auth-service with GHA cache
         run: |
-          echo "Awaiting RabbitMQ and PostgreSQL health checks..."
-          timeout 60s bash -c '
+          docker buildx build \
+            --file services/auth-service/Dockerfile \
+            --tag quickserve-auth-service:latest \
+            --cache-from type=gha,scope=auth-service \
+            --cache-to type=gha,mode=max,scope=auth-service \
+            --load \
+            .
+
+      - name: Start Full Microservices Environment
+        run: docker compose up -d
+
+      - name: Wait for Infrastructure Services
+        run: |
+          echo "Waiting for RabbitMQ, auth-db and order-db..."
+          timeout 90s bash -c '
             until docker compose exec -T rabbitmq rabbitmq-diagnostics -q ping 2>/dev/null && \
                   docker compose exec -T auth-db pg_isready -U postgres -d auth_db 2>/dev/null && \
                   docker compose exec -T order-db pg_isready -U postgres -d order_db 2>/dev/null; do
-              sleep 2
+              sleep 3
             done
           '
-          echo "All infrastructure dependencies are ready."
+          echo "Infrastructure is ready."
+
+      - name: Wait for Auth Service
+        run: |
+          echo "Waiting for auth-service health..."
+          timeout 60s bash -c '
+            until docker compose exec -T auth-service \
+              node -e "fetch(\"http://localhost:3001/health/ready\").then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"; do
+              sleep 3
+            done
+          '
+          echo "Auth service is ready."
+
+      - name: Apply Database Schemas
+        run: |
+          echo "Applying auth-service schema..."
+          docker compose exec -T auth-service \
+            sh -c "cd services/auth-service && npx prisma db push --accept-data-loss" || true
+
+          echo "Applying order-service migrations..."
+          docker compose exec -T order-service \
+            sh -c "cd services/order-service && npx prisma migrate deploy" || \
+          docker compose exec -T order-service \
+            sh -c "cd services/order-service && npx prisma db push --accept-data-loss" || true
 
       - name: Execute E2E Integration Test
         run: npx ts-node scripts/e2e-test.ts
 
       - name: Capture Container Logs on Failure
         if: failure()
-        run: docker compose logs --tail=200
+        run: docker compose logs --tail=300
 
       - name: Tear Down Stack
         if: always()

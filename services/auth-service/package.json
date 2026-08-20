@@ -4,7 +4,7 @@
   "type": "commonjs",
   "main": "dist/index.js",
 "scripts": {
-  "build": "prisma generate && tsc",
+  "build": "prisma generate && tsc && mkdir -p dist/generated && cp -r src/generated/prisma-client dist/generated/",
   "start": "node dist/index.js",
   "dev": "tsc --watch",
   "prisma:generate": "prisma generate",

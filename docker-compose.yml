@@ -1,8 +1,13 @@
+name: quickserve
+
 networks:
   default:
     name: quickserve-net
 
 services:
+  # ──────────────────────────────────────────────
+  # Infrastructure
+  # ──────────────────────────────────────────────
   auth-db:
     image: postgres:15-alpine
     container_name: quickserve-auth-db
@@ -10,8 +15,6 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: auth_db
-    ports:
-      - "15432:5432"
     volumes:
       - auth_data:/var/lib/postgresql/data
     healthcheck:
@@ -19,49 +22,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-
-  auth-service:
-    build:
-      context: .
-      dockerfile: services/auth-service/Dockerfile
-    container_name: quickserve-auth-service
-    working_dir: /usr/src/app
-    environment:
-      - NODE_ENV=development
-      - PORT=3001
-      - AUTH_DATABASE_URL=postgresql://postgres:postgres@auth-db:5432/auth_db
-      - ISSUER_URL=http://localhost:3001/oauth
-    ports:
-      - "3001:3001"
-    depends_on:
-      auth-db:
-        condition: service_healthy
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          'node -e "fetch(''http://localhost:3001/health/ready'').then(r => r.ok ? process.exit(0) : process.exit(1))" || exit 1',
-        ]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  menu-db:
-    image: postgres:15-alpine
-    container_name: quickserve-menu-db
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: menu_db
-    ports:
-      - "15433:5432"
-    volumes:
-      - menu_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d menu_db"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+    restart: unless-stopped
 
   order-db:
     image: postgres:15-alpine
@@ -70,8 +31,6 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: order_db
-    ports:
-      - "5434:5432"
     volumes:
       - order_data:/var/lib/postgresql/data
     healthcheck:
@@ -79,6 +38,150 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
+
+  menu-db:
+    image: postgres:15-alpine
+    container_name: quickserve-menu-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: menu_db
+    volumes:
+      - menu_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d menu_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  kitchen-db:
+    image: postgres:15-alpine
+    container_name: quickserve-kitchen-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: kitchen_db
+    volumes:
+      - kitchen_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d kitchen_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  loyalty-db:
+    image: postgres:15-alpine
+    container_name: quickserve-loyalty-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: loyalty_db
+    volumes:
+      - loyalty_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d loyalty_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  payment-db:
+    image: postgres:15-alpine
+    container_name: quickserve-payment-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: payment_db
+    volumes:
+      - payment_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d payment_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  notification-db:
+    image: postgres:15-alpine
+    container_name: quickserve-notification-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: notification_db
+    volumes:
+      - notification_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d notification_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: quickserve-redis
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: quickserve-rabbitmq
+    ports:
+      - "15672:15672" # Management UI only
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: quickserve-mailpit
+    ports:
+      - "8025:8025" # Web UI
+    volumes:
+      - mailpit_data:/data
+    restart: unless-stopped
+
+  # ──────────────────────────────────────────────
+  # Application services
+  # ──────────────────────────────────────────────
+  auth-service:
+    build:
+      context: .
+      dockerfile: services/auth-service/Dockerfile
+    container_name: quickserve-auth-service
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      AUTH_DATABASE_URL: postgresql://postgres:postgres@auth-db:5432/auth_db
+      ISSUER_URL: http://localhost:3001/oauth
+    depends_on:
+      auth-db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'node -e "fetch(\"http://localhost:3001/health/ready\").then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 8
+      start_period: 20s
+    restart: unless-stopped
 
   order-service:
     image: node:20-alpine
@@ -88,121 +191,17 @@ services:
       - .:/usr/src/app
     command: sh -c "npm install --no-audit --progress=false && npm run build --workspace=order-service && npm run start --workspace=order-service"
     environment:
-      - NODE_ENV=development
-      - PORT=3003
-      - ORDER_DATABASE_URL=postgresql://postgres:postgres@order-db:5432/order_db?schema=public
-      - RABBITMQ_URL=amqp://quickserve-rabbitmq:5672
+      NODE_ENV: development
+      PORT: 3003
+      ORDER_DATABASE_URL: postgresql://postgres:postgres@order-db:5432/order_db?schema=public
+      RABBITMQ_URL: amqp://rabbitmq:5672
     depends_on:
       order-db:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+    restart: unless-stopped
 
-  kitchen-db:
-    image: postgres:15-alpine
-    container_name: quickserve-kitchen-db
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: kitchen_db
-    ports:
-      - "5435:5432"
-    volumes:
-      - kitchen_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d kitchen_db"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  loyalty-db:
-    image: postgres:15-alpine
-    container_name: quickserve-loyalty-db
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: loyalty_db
-    ports:
-      - "5436:5432"
-    volumes:
-      - loyalty_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d loyalty_db"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  payment-db:
-    image: postgres:15-alpine
-    container_name: quickserve-payment-db
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: payment_db
-    ports:
-      - "5437:5432"
-    volumes:
-      - payment_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d payment_db"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  notification-db:
-    image: postgres:15-alpine
-    container_name: quickserve-notification-db
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: notification_db
-    ports:
-      - "5438:5432"
-    volumes:
-      - notification_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d notification_db"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  redis:
-    image: redis:7-alpine
-    container_name: quickserve-redis
-    ports:
-      - "16379:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  rabbitmq:
-    image: rabbitmq:3.12-management-alpine
-    container_name: quickserve-rabbitmq
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  mailpit:
-    image: axllent/mailpit:latest
-    container_name: quickserve-mailpit
-    ports:
-      - "1025:1025"
-      - "8025:8025"
-    volumes:
-      - mailpit_data:/data
-
-  # KDS Service (WebSocket + RabbitMQ consumer)
   kds-service:
     image: node:20-alpine
     container_name: quickserve-kds
@@ -211,14 +210,14 @@ services:
       - .:/usr/src/app
     command: sh -c "npm install --no-audit --progress=false && npm run build --workspace=kds-service && npm run start --workspace=kds-service"
     environment:
-      - NODE_ENV=development
-      - PORT=3004
-      - RABBITMQ_URL=amqp://quickserve-rabbitmq:5672
+      NODE_ENV: development
+      PORT: 3004
+      RABBITMQ_URL: amqp://rabbitmq:5672
     depends_on:
       rabbitmq:
         condition: service_healthy
+    restart: unless-stopped
 
-  # ! Gateway Replica 1
   gateway-1:
     image: node:20-alpine
     container_name: quickserve-gateway-1
@@ -227,24 +226,26 @@ services:
       - .:/usr/src/app
     command: sh -c "npm install --no-audit --progress=false && npm run build --workspace=gateway && npm run start --workspace=gateway"
     environment:
-      - NODE_ENV=development
-      - PORT=3000
-      - REDIS_URL=redis://quickserve-redis:6379
-      - ALLOWED_ORIGINS=http://localhost
-      - JWKS_URI=http://auth-service:3001/oauth/jwks
-      - JWT_ISSUER=http://localhost:3001/oauth
-      - AUTH_SERVICE_URL=http://auth-service:3001
-      - MENU_SERVICE_URL=http://menu-service:3002
-      - ORDER_SERVICE_URL=http://order-service:3003
-      - KITCHEN_SERVICE_URL=http://kitchen-service:3004
-      - LOYALTY_SERVICE_URL=http://loyalty-service:3005
-      - PAYMENT_SERVICE_URL=http://payment-service:3006
-      - NOTIFICATION_SERVICE_URL=http://notification-service:3007
+      NODE_ENV: development
+      PORT: 3000
+      REDIS_URL: redis://redis:6379
+      ALLOWED_ORIGINS: http://localhost
+      JWKS_URI: http://auth-service:3001/oauth/jwks
+      JWT_ISSUER: http://localhost:3001/oauth
+      AUTH_SERVICE_URL: http://auth-service:3001
+      MENU_SERVICE_URL: http://menu-service:3002
+      ORDER_SERVICE_URL: http://order-service:3003
+      KITCHEN_SERVICE_URL: http://kitchen-service:3004
+      LOYALTY_SERVICE_URL: http://loyalty-service:3005
+      PAYMENT_SERVICE_URL: http://payment-service:3006
+      NOTIFICATION_SERVICE_URL: http://notification-service:3007
     depends_on:
       redis:
         condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    restart: unless-stopped
 
-  # ! Gateway Replica 2
   gateway-2:
     image: node:20-alpine
     container_name: quickserve-gateway-2
@@ -253,28 +254,34 @@ services:
       - .:/usr/src/app
     command: sh -c "npm install --no-audit --progress=false && npm run build --workspace=gateway && npm run start --workspace=gateway"
     environment:
-      - NODE_ENV=development
-      - PORT=3000
-      - REDIS_URL=redis://quickserve-redis:6379
-      - ALLOWED_ORIGINS=http://localhost
-      - JWKS_URI=http://auth-service:3001/oauth/jwks
-      - JWT_ISSUER=http://localhost:3001/oauth
-      - AUTH_SERVICE_URL=http://auth-service:3001
-      - MENU_SERVICE_URL=http://menu-service:3002
-      - ORDER_SERVICE_URL=http://order-service:3003
-      - KITCHEN_SERVICE_URL=http://kitchen-service:3004
-      - LOYALTY_SERVICE_URL=http://loyalty-service:3005
-      - PAYMENT_SERVICE_URL=http://payment-service:3006
-      - NOTIFICATION_SERVICE_URL=http://notification-service:3007
+      NODE_ENV: development
+      PORT: 3000
+      REDIS_URL: redis://redis:6379
+      ALLOWED_ORIGINS: http://localhost
+      JWKS_URI: http://auth-service:3001/oauth/jwks
+      JWT_ISSUER: http://localhost:3001/oauth
+      AUTH_SERVICE_URL: http://auth-service:3001
+      MENU_SERVICE_URL: http://menu-service:3002
+      ORDER_SERVICE_URL: http://order-service:3003
+      KITCHEN_SERVICE_URL: http://kitchen-service:3004
+      LOYALTY_SERVICE_URL: http://loyalty-service:3005
+      PAYMENT_SERVICE_URL: http://payment-service:3006
+      NOTIFICATION_SERVICE_URL: http://notification-service:3007
     depends_on:
       redis:
         condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    restart: unless-stopped
 
+  # ──────────────────────────────────────────────
+  # Public entry point
+  # ──────────────────────────────────────────────
   nginx:
     image: nginx:1.25-alpine
     container_name: quickserve-nginx
     ports:
-      - "80:80" # ! The single public entry point to the entire system
+      - "80:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
@@ -282,11 +289,12 @@ services:
       - gateway-1
       - gateway-2
       - kds-service
+    restart: unless-stopped
 
 volumes:
   auth_data:
-  menu_data:
   order_data:
+  menu_data:
   kitchen_data:
   loyalty_data:
   payment_data:

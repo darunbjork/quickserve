@@ -2,7 +2,7 @@ import { UserRepository } from '../repositories/user.repository.js';
 import { PasswordService } from '../services/password.service.js';
 import { AppError } from '@quickserve/shared-utils';
 import { ErrorCode } from '@quickserve/shared-types';
-import { User, UserRole } from '@prisma/client';
+import { User, UserRole } from '../generated/prisma-client';
 
 export class UserService {
   private userRepository: UserRepository;

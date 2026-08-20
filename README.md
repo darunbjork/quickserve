@@ -273,3 +273,47 @@ For any questions or issues not covered here, refer to the logs and the architec
 ---
 
 **Generated for developers working with the QuickServe monorepo.**
+
+
+┌──────────────────────────────┐
+│         Web/Mobile Client    │
+└──────────────┬───────────────┘
+               │
+               ▼
+         ┌──────────┐
+         │  Nginx   │ (80)
+         └────┬─────┘
+              │
+        ┌─────┴─────┐
+        ▼           ▼
+   ┌─────────┐ ┌─────────┐
+   │Gateway-1│ │Gateway-2│
+   └────┬────┘ └────┬────┘
+        │           │
+   ┌────┴────┐      │
+   ▼         ▼      │
+┌────────┐ ┌────────┐
+│ /api/auth│ │/api/orders│
+│ Auth    │ │ Order   │
+│ Service │ │ Service │
+└───┬────┘ └────┬───┘
+    │           │
+    ▼           ▼
+┌────────┐ ┌────────┐
+│ Auth DB│ │ Order  │
+│(PG)    │ │ DB (PG)│
+└────────┘ └────────┘
+              │
+              ▼
+         ┌──────────┐
+         │RabbitMQ  │
+         └────┬─────┘
+              │
+              ▼
+         ┌──────────┐
+         │ KDS      │
+         │ Service  │
+         └────┬─────┘
+              │ (WebSocket)
+              ▼
+          [Kitchen Displays]
