@@ -40,7 +40,6 @@ proxyRouter.use(
 
 proxyRouter.use(
   '/api/orders',
-  authenticateJwt,
   createProxyMiddleware({
     target: config.ORDER_SERVICE_URL,
     changeOrigin: true,
