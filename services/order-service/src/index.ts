@@ -3,6 +3,7 @@ import { config } from './config';
 import { logger } from '@quickserve/shared-utils';
 import { orderRouter } from './routes/order.routes';
 import { OrderEventPublisher } from './events/order.publisher';
+import { OrderStatusConsumer } from './events/status.consumer';
 
 const app = express();
 app.use(express.json());
@@ -15,6 +16,7 @@ app.use('/', orderRouter);
 
 const start = async () => {
   await OrderEventPublisher.initialize();
+  await OrderStatusConsumer.initialize();
 
   const server = app.listen(config.PORT, () => {
     logger.info(`Order Service running on port ${config.PORT}`);
