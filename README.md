@@ -1,3 +1,17 @@
+# QuickServe — Fast-Food Order System (Chas Academy exam)
+
+**Start:** `docker compose up -d --build`
+**Health:** `curl http://localhost/api/health`
+**Menu:** `curl http://localhost/api/menu`
+**Place order:** `curl -X POST http://localhost/api/orders -H 'Content-Type: application/json' -d '{"items":[{"productId":"BURGER-01","quantity":2}]}'`
+**E2E test:** `npx ts-node --compiler-options '{"module":"CommonJS","moduleResolution":"Node"}' scripts/e2e-test.ts`
+
+## Services on the default path
+
+`product-service` (menu) · `order-service` (place + query) · `kitchen-service` (event consumer, service name `kds-service`) · `notification-service` (event consumer). All internal. nginx is the only public entry.
+
+Auth, loyalty, and payment services exist but are opt-in: `docker compose --profile full up -d`. They are not on the demo path.
+
 ```markdown
 # Quickserve — Local Development
 
