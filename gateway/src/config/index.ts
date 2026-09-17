@@ -12,6 +12,7 @@ const envSchema = z.object({
   KITCHEN_SERVICE_URL: z.string().url().default('http://kitchen-service:3004'),
   LOYALTY_SERVICE_URL: z.string().url().default('http://loyalty-service:3005'),
   PAYMENT_SERVICE_URL: z.string().url().default('http://payment-service:3006'),
+  NOTIFICATION_SERVICE_URL: z.string().url().default('http://notification-service:3007'),
   JWKS_URI: z.string().url().default('http://auth-service:3001/oauth/jwks'),
   JWT_ISSUER: z.string().default('http://localhost:3001/oauth'),
 });

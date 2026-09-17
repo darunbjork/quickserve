@@ -61,6 +61,7 @@ const services = {
   '/api/kitchen': config.KITCHEN_SERVICE_URL,
   '/api/loyalty': config.LOYALTY_SERVICE_URL,
   '/api/payment': config.PAYMENT_SERVICE_URL,
+  '/api/notifications': config.NOTIFICATION_SERVICE_URL,
 };
 
 Object.entries(services).forEach(([path, target]) => {

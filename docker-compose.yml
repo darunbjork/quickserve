@@ -154,6 +154,25 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  notification-service:
+    image: node:20-alpine
+    container_name: quickserve-notification-service
+    working_dir: /usr/src/app
+    volumes:
+      - .:/usr/src/app
+    command: sh -c "npm install --no-audit --progress=false && npm run build --workspace=@quickserve/shared-types && npm run build --workspace=@quickserve/shared-utils && npm run build --workspace=notification-service && npm run start --workspace=notification-service"
+    environment:
+      NODE_ENV: development
+      PORT: 3007
+      NOTIFICATION_DATABASE_URL: postgresql://postgres:postgres@notification-db:5432/notification_db?schema=public
+      RABBITMQ_URL: amqp://rabbitmq:5672
+    depends_on:
+      notification-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
   gateway-1:
     image: node:20-alpine
     container_name: quickserve-gateway-1
