@@ -120,6 +120,22 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  menu-service:
+    image: node:20-alpine
+    container_name: quickserve-menu-service
+    working_dir: /usr/src/app
+    volumes:
+      - .:/usr/src/app
+    command: sh -c "npm install --no-audit --progress=false && npm run build --workspace=@quickserve/shared-types && npm run build --workspace=@quickserve/shared-utils && npm run build --workspace=menu-service && npm run start --workspace=menu-service"
+    environment:
+      NODE_ENV: development
+      PORT: 3002
+      MENU_DATABASE_URL: postgresql://postgres:postgres@menu-db:5432/menu_db?schema=public
+    depends_on:
+      menu-db:
+        condition: service_healthy
+    restart: unless-stopped
+
   kds-service:
     image: node:20-alpine
     container_name: quickserve-kds

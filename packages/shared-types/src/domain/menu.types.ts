@@ -1,5 +1,6 @@
 export interface MenuItem {
   id: string;
+  sku: string;
   name: string;
   description: string;
   basePrice: number; // * Stored in lowest denomination (e.g., cents) to avoid floating-point math errors
