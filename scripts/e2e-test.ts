@@ -1,126 +1,151 @@
-import WebSocket from 'ws';
+const BASE_URL: string = process.env.E2E_BASE_URL ?? 'http://localhost';
+const POLL_INTERVAL_MS = 1000;
+const MAX_WAIT_MS = 30_000;
+const TEST_SKU = 'BURGER-01';
+const TEST_QUANTITY = 2;
 
-const BASE_URL = 'http://localhost';
-const WS_URL = 'ws://localhost/ws/kds';
-
-interface AuthResponse {
-  access_token: string;
-  token_type: string;
-  expires_in: number;
-}
-
-interface OrderResponse {
+interface ApiEnvelope<T> {
   success: boolean;
-  data: {
-    id: string;
-    customerId: string;
-    status: string;
-    totalAmount: number;
-    items: Array<{
-      id: string;
-      menuItemId: string;
-      name: string;
-      unitPrice: number;
-      quantity: number;
-      subtotal: number;
-    }>;
-  };
+  data?: T;
+  error?: { code: string; message: string };
 }
 
-async function runE2ETest() {
-  console.log('🚀 Starting QuickServe Microservices E2E Integration Test...\n');
+interface MenuItem {
+  id: string;
+  sku: string;
+  name: string;
+  description: string;
+  basePrice: number;
+  isAvailable: boolean;
+}
 
-  try {
-    console.log('1️⃣ Obtaining access token via client_credentials...');
-    const tokenRes = await fetch(`${BASE_URL}/api/auth/token`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': 'Basic ' + Buffer.from('test-client:test-secret').toString('base64'),
-      },
-      body: new URLSearchParams({
-        grant_type: 'client_credentials',
-        scope: 'openid',
-      }),
-    });
+interface OrderItem {
+  menuItemId: string;
+  name: string;
+  unitPrice: string;
+  quantity: number;
+  subtotal: string;
+}
 
-    if (!tokenRes.ok) {
-      const errorText = await tokenRes.text();
-      throw new Error(`Token request failed (${tokenRes.status}): ${errorText}`);
-    }
+interface Order {
+  id: string;
+  customerId: string;
+  status: string;
+  totalAmount: string;
+  currency: string;
+  items: OrderItem[];
+}
 
-    const authData = (await tokenRes.json()) as AuthResponse;
-    const token = authData.access_token;
-    console.log('   ✅ Access token obtained successfully.');
+interface Notification {
+  id: string;
+  orderId: string;
+  customerId: string;
+  type: string;
+  message: string;
+}
 
-    console.log('\n2️⃣ Establishing WebSocket connection to KDS Service...');
-    const ws = new WebSocket(WS_URL);
+function assert(condition: unknown, message: string): asserts condition {
+  if (!condition) throw new Error(`assertion failed: ${message}`);
+}
 
-    const wsPromise = new Promise<void>((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        ws.close();
-        reject(new Error('Timed out waiting for KDS WebSocket event (10s)'));
-      }, 10000);
-
-      ws.on('open', () => {
-        console.log('   ✅ Connected to KDS WebSocket stream.');
-      });
-
-      ws.on('message', (rawMsg) => {
-        try {
-          const message = JSON.parse(rawMsg.toString());
-          console.log(`   📥 KDS Received Event: ${message.event}`);
-
-          if (message.event === 'order.created') {
-            console.log(`   ✅ Order ID matches: ${message.data.orderId}`);
-            clearTimeout(timeout);
-            ws.close();
-            resolve();
-          }
-        } catch (err) {
-        }
-      });
-
-      ws.on('error', (err) => {
-        clearTimeout(timeout);
-        reject(err);
-      });
-    });
-
-    await new Promise((r) => setTimeout(r, 1000));
-
-    console.log('\n3️⃣ Submitting new order to Order Service...');
-    const orderRes = await fetch(`${BASE_URL}/api/orders`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        items: [
-          { menuItemId: 'prod_burger_01', name: 'Classic Burger', unitPrice: 95, quantity: 2 },
-          { menuItemId: 'prod_fries_01', name: 'French Fries', unitPrice: 35, quantity: 1 },
-        ],
-      }),
-    });
-
-    if (!orderRes.ok) {
-      const errorText = await orderRes.text();
-      throw new Error(`Order creation failed (${orderRes.status}): ${errorText}`);
-    }
-
-    const orderData = (await orderRes.json()) as OrderResponse;
-    console.log(`   ✅ Order created with ID: ${orderData.data.id} (Total: ${orderData.data.totalAmount} SEK)`);
-
-    console.log('\n4️⃣ Awaiting WebSocket event propagation from RabbitMQ to KDS...');
-    await wsPromise;
-
-    console.log('\n🎉 E2E INTEGRATION TEST PASSED SUCCESSFULLY!');
-    process.exit(0);
-  } catch (error) {
-    console.error('\n❌ E2E INTEGRATION TEST FAILED:', error);
-    process.exit(1);
+async function getJson<T>(path: string): Promise<ApiEnvelope<T>> {
+  const res = await fetch(`${BASE_URL}${path}`);
+  const body = (await res.json()) as ApiEnvelope<T>;
+  if (!res.ok || !body.success) {
+    throw new Error(`GET ${path} -> ${res.status}: ${JSON.stringify(body)}`);
   }
+  return body;
 }
 
-runE2ETest();
+async function postJson<T>(path: string, payload: unknown): Promise<ApiEnvelope<T>> {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const body = (await res.json()) as ApiEnvelope<T>;
+  if (!res.ok || !body.success) {
+    throw new Error(`POST ${path} -> ${res.status}: ${JSON.stringify(body)}`);
+  }
+  return body;
+}
+
+async function sleep(ms: number): Promise<void> {
+  await new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitForOrderStatus(orderId: string, target: readonly string[]): Promise<Order> {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < MAX_WAIT_MS) {
+    const res = await getJson<Order>(`/api/orders/${orderId}`);
+    const order = res.data;
+    if (order && target.includes(order.status)) return order;
+    await sleep(POLL_INTERVAL_MS);
+  }
+  throw new Error(
+    `order ${orderId} did not reach [${target.join(', ')}] within ${MAX_WAIT_MS}ms`,
+  );
+}
+
+async function waitForNotification(orderId: string): Promise<Notification> {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < MAX_WAIT_MS) {
+    const res = await getJson<Notification[]>(`/api/notifications/${orderId}`);
+    const first = res.data?.[0];
+    if (first) return first;
+    await sleep(POLL_INTERVAL_MS);
+  }
+  throw new Error(`no notification for order ${orderId} within ${MAX_WAIT_MS}ms`);
+}
+
+async function run(): Promise<void> {
+  console.log(`E2E: QuickServe order flow @ ${BASE_URL}\n`);
+
+  console.log('[1/5] GET /api/menu');
+  const menu = await getJson<MenuItem[]>('/api/menu');
+  const burger = menu.data?.find((item) => item.sku === TEST_SKU);
+  assert(burger, `menu must contain sku=${TEST_SKU}`);
+  console.log(
+    `      ${menu.data?.length ?? 0} items; ${TEST_SKU} = "${burger.name}" @ ${burger.basePrice} ore`,
+  );
+
+  console.log('[2/5] POST /api/orders');
+  const placed = await postJson<Order>('/api/orders', {
+    items: [{ productId: TEST_SKU, quantity: TEST_QUANTITY }],
+  });
+  const order = placed.data;
+  assert(order, 'response must include an order');
+  assert(order.status === 'CREATED', `expected CREATED, got ${order.status}`);
+  const expectedTotal = burger.basePrice * TEST_QUANTITY;
+  assert(
+    order.totalAmount === String(expectedTotal),
+    `totalAmount expected ${expectedTotal}, got ${order.totalAmount}`,
+  );
+  assert(order.items.length === 1, `expected 1 line item, got ${order.items.length}`);
+  console.log(`      order ${order.id} created; total ${order.totalAmount} ore`);
+
+  console.log('[3/5] poll /api/orders/:id -> PREPARING');
+  const preparing = await waitForOrderStatus(order.id, ['PREPARING', 'READY']);
+  console.log(`      status = ${preparing.status}`);
+
+  console.log('[4/5] poll /api/orders/:id -> READY');
+  const ready = await waitForOrderStatus(order.id, ['READY']);
+  console.log(`      status = ${ready.status}`);
+
+  console.log('[5/5] GET /api/notifications/:id');
+  const notification = await waitForNotification(order.id);
+  assert(notification.orderId === order.id, 'notification.orderId must match order');
+  assert(
+    notification.type === 'ORDER_READY',
+    `notification.type expected ORDER_READY, got ${notification.type}`,
+  );
+  console.log(`      ${notification.type} - "${notification.message}"`);
+
+  console.log('\nE2E PASSED');
+}
+
+run().catch((err: unknown) => {
+  console.error('\nE2E FAILED');
+  console.error(err instanceof Error ? err.message : String(err));
+  process.exit(1);
+});

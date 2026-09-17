@@ -117,7 +117,7 @@ jobs:
 
   e2e-integration:
     name: System E2E Integration Tests
-    needs: [static-analysis, security-scan, docker-build]
+    needs: [static-analysis, docker-build]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -126,7 +126,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install Dependencies
@@ -135,61 +135,55 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build auth-service with GHA cache
-        run: |
-          docker buildx build \
-            --file services/auth-service/Dockerfile \
-            --tag quickserve-auth-service:latest \
-            --cache-from type=gha,scope=auth-service \
-            --cache-to type=gha,mode=max,scope=auth-service \
-            --load \
-            .
+      - name: Start Stack
+        run: docker compose up -d --build
 
-      - name: Start Full Microservices Environment
-        run: docker compose up -d
-
-      - name: Wait for Infrastructure Services
+      - name: Wait for infrastructure
         run: |
-          echo "Waiting for RabbitMQ, auth-db and order-db..."
-          timeout 90s bash -c '
-            until docker compose exec -T rabbitmq rabbitmq-diagnostics -q ping 2>/dev/null && \
-                  docker compose exec -T auth-db pg_isready -U postgres -d auth_db 2>/dev/null && \
-                  docker compose exec -T order-db pg_isready -U postgres -d order_db 2>/dev/null; do
+          echo "Waiting for healthy containers..."
+          timeout 180s bash -c '
+            while :; do
+              healthy=$(docker compose ps --format "{{.Status}}" | grep -c "(healthy)" || true)
+              echo "  healthy: $healthy"
+              if [ "$healthy" -ge 4 ]; then break; fi
               sleep 3
             done
           '
           echo "Infrastructure is ready."
 
-      - name: Wait for Auth Service
+      - name: Apply database schemas
         run: |
-          echo "Waiting for auth-service health..."
-          timeout 60s bash -c '
-            until docker compose exec -T auth-service \
-              node -e "fetch(\"http://localhost:3001/health/ready\").then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"; do
+          for svc in order-service menu-service notification-service; do
+            echo "--- $svc ---"
+            docker compose exec -T "$svc" sh -c "cd services/$svc && npx prisma migrate deploy" \
+              || docker compose exec -T "$svc" sh -c "cd services/$svc && npx prisma db push --accept-data-loss" \
+              || true
+          done
+
+      - name: Seed menu
+        run: |
+          docker compose exec -T menu-service \
+            sh -c "cd services/menu-service && npm run prisma:seed" \
+            || docker compose exec -T menu-service \
+            sh -c "cd services/menu-service && npx ts-node prisma/seed.ts"
+
+      - name: Wait for public API
+        run: |
+          echo "Waiting for http://localhost/api/menu ..."
+          timeout 180s bash -c '
+            until curl -sf http://localhost/api/menu >/dev/null 2>&1; do
               sleep 3
             done
           '
-          echo "Auth service is ready."
+          echo "API reachable."
 
-      - name: Apply Database Schemas
-        run: |
-          echo "Applying auth-service schema..."
-          docker compose exec -T auth-service \
-            sh -c "cd services/auth-service && npx prisma db push --accept-data-loss" || true
+      - name: Execute E2E integration test
+        run: npx ts-node --compiler-options '{"module":"CommonJS","moduleResolution":"Node"}' scripts/e2e-test.ts
 
-          echo "Applying order-service migrations..."
-          docker compose exec -T order-service \
-            sh -c "cd services/order-service && npx prisma migrate deploy" || \
-          docker compose exec -T order-service \
-            sh -c "cd services/order-service && npx prisma db push --accept-data-loss" || true
-
-      - name: Execute E2E Integration Test
-        run: npx ts-node scripts/e2e-test.ts
-
-      - name: Capture Container Logs on Failure
+      - name: Capture container logs on failure
         if: failure()
         run: docker compose logs --tail=300
 
-      - name: Tear Down Stack
+      - name: Tear down stack
         if: always()
         run: docker compose down -v

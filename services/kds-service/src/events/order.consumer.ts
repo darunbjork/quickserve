@@ -18,6 +18,7 @@ export class OrderEventConsumer {
       await this.channel.assertExchange(this.EXCHANGE_NAME, 'topic', { durable: true });
       await this.channel.assertQueue(this.QUEUE_NAME, { durable: true });
 
+      await this.channel.unbindQueue(this.QUEUE_NAME, this.EXCHANGE_NAME, 'order.*');
       await this.channel.bindQueue(this.QUEUE_NAME, this.EXCHANGE_NAME, 'order.created');
 
       await this.channel.prefetch(10);
