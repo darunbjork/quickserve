@@ -4,10 +4,9 @@ import { ErrorCode } from '@quickserve/shared-types';
 
 export class OrderStateMachine {
   private static readonly ALLOWED_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
-    [OrderStatus.PENDING]: [OrderStatus.PAID, OrderStatus.CANCELLED],
-    [OrderStatus.PAID]: [OrderStatus.PREPARING, OrderStatus.CANCELLED],
+    [OrderStatus.CREATED]: [OrderStatus.PREPARING, OrderStatus.CANCELLED],
     [OrderStatus.PREPARING]: [OrderStatus.READY, OrderStatus.CANCELLED],
-    [OrderStatus.READY]: [OrderStatus.COMPLETED, OrderStatus.CANCELLED],
+    [OrderStatus.READY]: [OrderStatus.COMPLETED],
     [OrderStatus.COMPLETED]: [], 
     [OrderStatus.CANCELLED]: [], 
   };

@@ -20,7 +20,7 @@ export class OrderRepository {
         data: {
           customerId: data.customerId,
           totalAmount: new Prisma.Decimal(totalAmount),
-          status: OrderStatus.PENDING,
+          status: OrderStatus.CREATED,
           paymentStatus: PaymentStatus.PENDING,
           items: {
             create: data.items.map((item) => ({

@@ -8,8 +8,7 @@ datasource db {
 }
 
 enum OrderStatus {
-  PENDING
-  PAID
+  CREATED
   PREPARING
   READY
   COMPLETED
@@ -26,7 +25,7 @@ enum PaymentStatus {
 model Order {
   id            String        @id @default(uuid())
   customerId    String // ! Foreign reference to user ID in auth-service
-  status        OrderStatus   @default(PENDING)
+  status        OrderStatus   @default(CREATED)
   paymentStatus PaymentStatus @default(PENDING)
   totalAmount   Decimal       @db.Decimal(10, 2)
   currency      String        @default("SEK")
