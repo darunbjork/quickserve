@@ -4,3 +4,5 @@ dist/
 notes
 .aider*
 **/src/generated/**
+.turbo/
+**/.turbo/
