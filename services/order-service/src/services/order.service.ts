@@ -12,14 +12,32 @@ export class OrderService {
     this.orderRepository = new OrderRepository();
   }
 
-  public async createOrder(input: CreateOrderInput) {
+  public async createOrder(input: {
+    customerId: string;
+    items: Array<{
+      productId: string;
+      name: string;
+      quantity: number;
+      unitPrice: number;
+    }>;
+  }) {
     if (!input.items || input.items.length === 0) {
       throw new AppError('Order must contain at least one item', 400, ErrorCode.VALIDATION_ERROR);
     }
 
-    const totalAmount = input.items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
+    const repositoryInput: CreateOrderInput = {
+      customerId: input.customerId,
+      items: input.items.map((item) => ({
+        menuItemId: item.productId,
+        name: item.name,
+        unitPrice: item.unitPrice,
+        quantity: item.quantity,
+      })),
+    };
 
-    const order = await this.orderRepository.create(input, totalAmount);
+    const totalAmount = repositoryInput.items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
+
+    const order = await this.orderRepository.create(repositoryInput, totalAmount);
 
     await OrderEventPublisher.publishOrderCreated(
       order.id,

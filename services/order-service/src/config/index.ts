@@ -6,6 +6,7 @@ const envSchema = z.object({
   PORT: z.string().default('3002'),
   ORDER_DATABASE_URL: z.string().url(),
   RABBITMQ_URL: z.string().default('amqp://localhost:5672'),
+  MENU_SERVICE_URL: z.string().url().default('http://menu-service:3002'),
 });
 
 export const config = validateEnv(envSchema, process.env);

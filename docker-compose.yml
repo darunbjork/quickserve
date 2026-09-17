@@ -113,6 +113,7 @@ services:
       PORT: 3003
       ORDER_DATABASE_URL: postgresql://postgres:postgres@order-db:5432/order_db?schema=public
       RABBITMQ_URL: amqp://rabbitmq:5672
+      MENU_SERVICE_URL: http://menu-service:3002
     depends_on:
       order-db:
         condition: service_healthy

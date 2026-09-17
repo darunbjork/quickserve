@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import { Router, Request, Response } from 'express';
 import { asyncHandler } from '@quickserve/shared-utils';
 import { OrderService } from '../services/order.service';
+import { MenuClient } from '../clients/menu.client';
 import { OrderStatus } from '../generated/prisma-client';
 
 const orderService = new OrderService();
@@ -13,18 +14,42 @@ orderRouter.post(
     const headerUserId = req.headers['x-user-id'] as string | undefined;
     const correlationId = req.headers['x-correlation-id'] as string | undefined;
     const customerId = headerUserId ?? `guest-${correlationId ?? randomUUID()}`;
-    const items = (req.body.items ?? []).map((item: {
-      productId?: string;
-      menuItemId?: string;
-      name?: string;
-      unitPrice?: number;
-      quantity: number;
-    }) => ({
-      menuItemId: item.menuItemId ?? item.productId ?? 'unknown',
-      name: item.name ?? item.productId ?? 'Unknown item',
-      unitPrice: item.unitPrice ?? 0,
-      quantity: item.quantity,
-    }));
+    const rawItems = req.body.items as Array<{ productId: string; quantity: number }>;
+
+    if (!Array.isArray(rawItems) || rawItems.length === 0) {
+      res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'items must be a non-empty array' },
+      });
+      return;
+    }
+
+    const enriched = await Promise.all(
+      rawItems.map(async (item) => {
+        const menu = await MenuClient.lookupBySku(item.productId);
+        if (!menu) return null;
+        return {
+          productId: menu.sku,
+          name: menu.name,
+          quantity: item.quantity,
+          unitPrice: menu.unitPrice,
+        };
+      })
+    );
+
+    const missing = rawItems.filter((_, index) => enriched[index] === null);
+    if (missing.length > 0) {
+      res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: `Unknown menu item(s): ${missing.map((item) => item.productId).join(', ')}`,
+        },
+      });
+      return;
+    }
+
+    const items = enriched.filter((item): item is NonNullable<typeof item> => item !== null);
 
     const order = await orderService.createOrder({ customerId, items });
 
