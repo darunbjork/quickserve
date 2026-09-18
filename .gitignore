@@ -6,3 +6,5 @@ notes
 **/src/generated/**
 .turbo/
 **/.turbo/
+tsconfig.tsbuildinfo
+**/tsconfig.tsbuildinfo
