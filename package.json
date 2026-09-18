@@ -21,6 +21,7 @@
   },
   "overrides": {
     "deepmerge-ts": "^8.0.1",
+    "vite": "^5.4.0",
     "@prisma/config": {
       "deepmerge-ts": "^8.0.1"
     },
