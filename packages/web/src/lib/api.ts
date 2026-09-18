@@ -60,6 +60,11 @@ export interface PlaceOrderLine {
   quantity: number;
 }
 
+export interface KitchenOrder {
+  orderId: string;
+  customerId: string;
+}
+
 export const api = {
   getMenu: (): Promise<MenuItem[]> => request<MenuItem[]>('/menu'),
 
@@ -70,6 +75,14 @@ export const api = {
     }),
 
   getOrder: (id: string): Promise<Order> => request<Order>(`/orders/${id}`),
+
+  getKitchenOrders: (): Promise<KitchenOrder[]> =>
+    request<KitchenOrder[]>('/kitchen/orders'),
+
+  markKitchenReady: (orderId: string): Promise<{ orderId: string; status: string }> =>
+    request<{ orderId: string; status: string }>(`/kitchen/orders/${orderId}/ready`, {
+      method: 'POST',
+    }),
 };
 
 export function formatOre(ore: number | string): string {
