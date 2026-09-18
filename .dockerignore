@@ -1,39 +1,70 @@
-# Dependencies (reinstalled inside the container anyway)
+# Dependencies
 **/node_modules
 node_modules
-npm-debug.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
 
-# Environment / secrets — never bake these into an image
-.env
-.env.*
+# Environment & Secrets — never bake these into Docker images or client bundles
+**/.env
+**/.env.*
+!**/.env.example
+*.env
+*.env.*
 !.env.example
+*.local
+**/*.local
+*.pem
+**/*.pem
+*.key
+**/*.key
+*.cert
+**/*.cert
+*.crt
+**/*.crt
+*credentials*.json
+**/*credentials*.json
+*service-account*.json
+**/*service-account*.json
 
 # Version control
 .git
 .gitignore
 
-# Editor/OS junk
+# Editor / OS files
 .vscode
 .idea
 .DS_Store
+**/.DS_Store
 
-# Build output that gets regenerated
+# Build output and caches that get regenerated inside container
 dist
 **/dist
 build
 **/build
 coverage
 **/coverage
+.turbo
+**/.turbo
+*.tsbuildinfo
+**/*.tsbuildinfo
 
-# Docker-related files that don't need to be in the image
+# Docker files
 Dockerfile
-docker-compose.yml
+**/Dockerfile
+docker-compose*.yml
 .dockerignore
 
-# Tests and docs (optional — depends if you need them at runtime)
+# Tests and documentation
 tests
-*.test.ts
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
 README.md
+REHEARSAL.md
+DEFENSE.md
 
 # Logs
 *.log
+**/*.log
