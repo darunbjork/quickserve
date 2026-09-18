@@ -225,6 +225,15 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  web-build:
+    image: node:20-alpine
+    container_name: quickserve-web-build
+    working_dir: /app
+    volumes:
+      - .:/app
+    command: sh -c "npm install --no-audit --progress=false && cd packages/web && npm run build"
+    restart: "no"
+
   nginx:
     image: nginx:1.25-alpine
     container_name: quickserve-nginx
@@ -233,10 +242,16 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./packages/web/dist:/usr/share/nginx/html:ro
     depends_on:
-      - gateway-1
-      - gateway-2
-      - kds-service
+      gateway-1:
+        condition: service_started
+      gateway-2:
+        condition: service_started
+      kds-service:
+        condition: service_started
+      web-build:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   # ──────────────────────────────────────────────
