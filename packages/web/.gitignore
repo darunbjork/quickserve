@@ -1,0 +1,19 @@
+# Environment files and credentials
+.env
+.env.*
+!.env.example
+*.local
+
+# Dependencies
+node_modules/
+
+# Build artifacts
+dist/
+dist-ssr/
+*.tsbuildinfo
+
+# Logs
+*.log
+
+# Editor / OS
+.DS_Store
