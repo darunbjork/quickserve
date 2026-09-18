@@ -71,7 +71,6 @@ export const createOidcProvider = (): Provider => {
             jwt.payload.email = 'test-client@quickserve.internal';
             jwt.payload.role = 'ADMIN';
           }
-          return jwt;
         },
       },
     },
