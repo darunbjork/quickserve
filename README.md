@@ -32,6 +32,23 @@ The frontend SPA is served by the same nginx at `/` and `/kitchen`.
 
 No service calls another over HTTP on the critical path.
 
+## Screenshots
+
+### 1. Browse Menu (`/`)
+![Customer Menu](docs/screenshots/01-customer-menu.png)
+
+### 2. Cart & Place Order
+![Cart and Order](docs/screenshots/02-cart-order.png)
+
+### 3. Live Status — Preparing
+![Order Preparing](docs/screenshots/03-order-preparing.png)
+
+### 4. Kitchen Board (`/kitchen`)
+![Kitchen Board](docs/screenshots/04-kitchen-board.png)
+
+### 5. Live Status — Ready for Pickup
+![Order Ready](docs/screenshots/05-order-ready.png)
+
 ## Services
 
 | Service | Role | Internal port |
